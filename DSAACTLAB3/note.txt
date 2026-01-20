@@ -1,0 +1,18 @@
+make a c++ code 
+
+1st task: create an integer array composing of 10 elements with values ranging from 20-60 (unsorted)
+display using for loop the original content of this array.
+
+2nd task: create a container stack and queue and store the initial content of this array. Use insert function. Pop 3 times in both containers
+Display content of stack and queue. Verify whether array has something in it or not.
+
+3rd task: Merge the remaining content of the stack and queue into one container. Stack elements first the elements of the queue. Print the result after. Make it a void function that can be called.
+3rd task: pagsamahin ang content ng stack and queue sa isang lalagyanan (14 elements). Stack first then queue. (Data Merging). print result.
+
+4th task: Gumawa ng 4 na sorting algotrithm functions na pwede tawagin. 
+Create 4 sorting algorithms that will sort the merged array and make them a function that can be called
+
+5th task: Dito daw papasok ang chrono function. Between running the 4 sorting algorithm, monitor the time complexity of chosen sorting
+algorithm. Print the output labels.
+
+Using chrono function, monitor the time complexity of each sorting algorithms in ms. Print all the labels and data needed in the terminal
