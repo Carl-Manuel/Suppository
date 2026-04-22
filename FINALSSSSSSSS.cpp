@@ -105,7 +105,7 @@ std::vector<std::string> getSubjectsByYear(YearLevel year) {
         case FIRST:
             return {
                 "Chemistry Lecture",
-                "Chemistry Laboratory",
+                "Chemistry Laboratory", 
                 "Computer Engineering as a Discipline",
                 "Programming Logic and Design",
                 "Calculus 1",
@@ -120,8 +120,7 @@ std::vector<std::string> getSubjectsByYear(YearLevel year) {
                 "Engineering Data Analysis",
                 "Fundamentals of Electronic Circuits Lecture",
                 "Fundamentals of Electronic Circuits Laboratory",
-                "Science, Technology, and Society",
-                "Personality Development"
+                "Science, Technology, and Society Personality Development"
             };
         case THIRD:
             return {
@@ -224,7 +223,13 @@ void loadStudentsFromFile(std::vector<Student>& allStudents, std::map<YearLevel,
         std::getline(iss, yearStr, '|');
         std::getline(iss, gradesStr, '|');
         
-        int year = std::stoi(yearStr);
+        int year;
+        try {
+            year = std::stoi(yearStr);
+        } catch (const std::exception& e) {
+            std::cerr << "Error parsing year: " << yearStr << std::endl;
+            continue;
+        }
         YearLevel yearLevel = static_cast<YearLevel>(year);
         
         // Parse comma-delimited grades
@@ -856,38 +861,23 @@ void displayWelcomeBanner() {
 }
 
 void sortBySubjectGWAName(const std::map<YearLevel, std::vector<Student>>& studentsByYear) {
-    // Ask for year level
-    YearLevel yearLevel = getYearLevelInput();
-    if (yearLevel == static_cast<YearLevel>(-1)) {
-        std::cout << COLOR_YELLOW << "✗ Operation cancelled.\n" << COLOR_RESET;
-        return;
-    }
+    YearLevel year = getYearLevelInput();
+    if (year == static_cast<YearLevel>(-1)) return;
 
-    auto it = studentsByYear.find(yearLevel);
+    auto it = studentsByYear.find(year);
     if (it == studentsByYear.end() || it->second.empty()) {
-        std::cout << COLOR_YELLOW << "No students found for " << getYearString(yearLevel) << ".\n" << COLOR_RESET;
+        std::cout << COLOR_YELLOW << "No students found for " << getYearString(year) << ".\n" << COLOR_RESET;
         return;
     }
 
-    // Get subjects for the year
-    std::vector<std::string> subjects = getSubjectsByYear(yearLevel);
-
-    // Display subjects with numbering
-    std::cout << "\n" << COLOR_CYAN << "═══════════════════════════════════════════════════════════════════════════════════════════════════════\n" << COLOR_RESET;
-    std::cout << COLOR_GREEN << COLOR_BOLD << "  Available Subjects for " << getYearString(yearLevel) << "\n" << COLOR_RESET;
-    std::cout << COLOR_CYAN << "═══════════════════════════════════════════════════════════════════════════════════════════════════════\n" << COLOR_RESET;
+    std::vector<std::string> subjects = getSubjectsByYear(year);
+    std::cout << "\n" << COLOR_CYAN << "Subjects for " << getYearString(year) << ":\n" << COLOR_RESET;
     for (size_t i = 0; i < subjects.size(); ++i) {
-        std::cout << COLOR_BLUE << std::setw(2) << (i + 1) << ". " << subjects[i] << "\n" << COLOR_RESET;
+        std::cout << COLOR_BLUE << (i + 1) << ". " << subjects[i] << "\n" << COLOR_RESET;
     }
-    std::cout << COLOR_CYAN << "═══════════════════════════════════════════════════════════════════════════════════════════════════════\n" << COLOR_RESET;
 
-    // Ask for sort type
     int sortChoice;
-    std::cout << COLOR_MAGENTA << "Sort by:\n" << COLOR_RESET;
-    std::cout << COLOR_GREEN << "1. Subject Grade\n" << COLOR_RESET;
-    std::cout << COLOR_GREEN << "2. Overall GWA\n" << COLOR_RESET;
-    std::cout << COLOR_GREEN << "3. Student Name\n" << COLOR_RESET;
-    std::cout << COLOR_MAGENTA << "Enter choice (1-3): " << COLOR_RESET;
+    std::cout << "\n" << COLOR_MAGENTA << "Sort by:\n1. Subject Grade\n2. GWA\n3. Name\nEnter choice: " << COLOR_RESET;
     std::cin >> sortChoice;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
@@ -896,25 +886,8 @@ void sortBySubjectGWAName(const std::map<YearLevel, std::vector<Student>>& stude
         return;
     }
 
-    // Ask for subject index if sorting by subject
-    int subjectIndex = -1;
-    if (sortChoice == 1) {
-        std::cout << COLOR_MAGENTA << "Enter subject number (1-" << subjects.size() << "): " << COLOR_RESET;
-        std::cin >> subjectIndex;
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        if (subjectIndex < 1 || subjectIndex > static_cast<int>(subjects.size())) {
-            std::cout << COLOR_YELLOW << "Invalid subject number.\n" << COLOR_RESET;
-            return;
-        }
-        subjectIndex--; // Convert to 0-based index
-    }
-
-    // Ask for ascending/descending
     char orderChoice;
-    std::cout << COLOR_MAGENTA << "Order:\n" << COLOR_RESET;
-    std::cout << COLOR_GREEN << "A. Ascending\n" << COLOR_RESET;
-    std::cout << COLOR_GREEN << "D. Descending\n" << COLOR_RESET;
-    std::cout << COLOR_MAGENTA << "Enter choice (A/D): " << COLOR_RESET;
+    std::cout << COLOR_MAGENTA << "Order:\nA. Ascending\nD. Descending\nEnter choice: " << COLOR_RESET;
     std::cin >> orderChoice;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     orderChoice = std::toupper(orderChoice);
@@ -924,66 +897,84 @@ void sortBySubjectGWAName(const std::map<YearLevel, std::vector<Student>>& stude
         return;
     }
 
-    // Copy students for sorting
-    std::vector<Student> sortedStudents = it->second;
+    std::vector<Student> studentsToSort = it->second;
+    std::string subjectName = "";
+    int subjectIndex = -1;
 
-    // Sort based on criteria
-    std::sort(sortedStudents.begin(), sortedStudents.end(), [&](const Student& a, const Student& b) {
-        double valA, valB;
-        switch (sortChoice) {
-            case 1: // Subject grade
-                valA = a.grades[subjectIndex];
-                valB = b.grades[subjectIndex];
-                break;
-            case 2: // GWA
-                valA = a.gwa;
-                valB = b.gwa;
-                break;
-            case 3: // Name
-                if (orderChoice == 'A') return a.name < b.name;
-                else return a.name > b.name;
+    if (sortChoice == 1) {
+        std::cout << COLOR_MAGENTA << "Enter subject number (1-" << subjects.size() << "): " << COLOR_RESET;
+        std::cin >> subjectIndex;
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        subjectIndex--;
+        if (subjectIndex < 0 || subjectIndex >= static_cast<int>(subjects.size())) {
+            std::cout << COLOR_YELLOW << "Invalid subject number.\n" << COLOR_RESET;
+            return;
         }
+        subjectName = subjects[subjectIndex];
+    }
 
-        if (sortChoice != 3) {
-            if (orderChoice == 'A') return valA < valB;
-            else return valA > valB;
+    // Sort the students
+    std::sort(studentsToSort.begin(), studentsToSort.end(), [&](const Student& a, const Student& b) {
+        bool ascending = (orderChoice == 'A');
+        if (sortChoice == 1) { // Subject grade
+            if (ascending) return a.grades[subjectIndex] < b.grades[subjectIndex];
+            else return a.grades[subjectIndex] > b.grades[subjectIndex];
+        } else if (sortChoice == 2) { // GWA
+            if (ascending) return a.gwa < b.gwa;
+            else return a.gwa > b.gwa;
+        } else { // Name
+            if (ascending) return a.name < b.name;
+            else return a.name > b.name;
         }
-        return false; // Should not reach here
     });
 
-    // Display results
+    // Display the results
     std::string sortType;
-    switch (sortChoice) {
-        case 1: sortType = "Subject Grade: " + subjects[subjectIndex]; break;
-        case 2: sortType = "Overall GWA"; break;
-        case 3: sortType = "Student Name"; break;
-    }
+    if (sortChoice == 1) sortType = "Subject: " + subjectName;
+    else if (sortChoice == 2) sortType = "GWA";
+    else sortType = "Name";
     sortType += (orderChoice == 'A' ? " (Ascending)" : " (Descending)");
 
     std::cout << "\n" << COLOR_CYAN << "═══════════════════════════════════════════════════════════════════════════════════════════════════════\n" << COLOR_RESET;
-    std::cout << COLOR_GREEN << COLOR_BOLD << "  " << getYearString(yearLevel) << " Students - Sorted by " << sortType << "\n" << COLOR_RESET;
+    std::cout << COLOR_GREEN << COLOR_BOLD << "  " << getYearString(year) << " Students - Sorted by " << sortType << "\n" << COLOR_RESET;
+    if (!subjectName.empty()) {
+        std::cout << COLOR_YELLOW << "  Subject: " << subjectName << "\n" << COLOR_RESET;
+    }
     std::cout << COLOR_CYAN << "═══════════════════════════════════════════════════════════════════════════════════════════════════════\n" << COLOR_RESET;
     std::cout << COLOR_BLUE << COLOR_BOLD;
-    std::cout << std::left << std::setw(30) << "Name" << " │ " << std::setw(12) << "Student No" << " │ ";
-    if (sortChoice == 1) {
-        std::cout << std::setw(13) << "Subject Grade" << " │ ";
-    }
-    std::cout << std::setw(6) << "GWA" << " │ " << std::setw(7) << "Status" << "\n" << COLOR_RESET;
+    std::cout << std::left << std::setw(3) << "#" << " │ " << std::setw(30) << "Name" << " │ " 
+              << std::setw(12) << "Student No" << " │ " << std::setw(12) << "Subject Grade" << " │ " 
+              << std::setw(6) << "GWA" << " │ " << std::setw(7) << "Status" << "\n" << COLOR_RESET;
     std::cout << COLOR_CYAN << "─────────────────────────────────────────────────────────────────────────────────────────────────────────────\n" << COLOR_RESET;
 
-    for (const auto& student : sortedStudents) {
-        std::cout << std::left << std::setw(30) << student.name << " │ "
+    int counter = 1;
+    for (const auto& student : studentsToSort) {
+        std::cout << std::left << std::setw(3) << counter << " │ " << std::setw(30) << student.name << " │ "
                   << std::setw(12) << student.studentNumber << " │ ";
         if (sortChoice == 1) {
-            std::cout << std::fixed << std::setprecision(2) << std::setw(13) << student.grades[subjectIndex] << " │ ";
+            std::cout << std::fixed << std::setprecision(2) << std::setw(12) << student.grades[subjectIndex] << " │ ";
+        } else {
+            std::cout << std::setw(12) << "-" << " │ ";
         }
         std::cout << std::fixed << std::setprecision(2) << std::setw(6) << student.gwa << " │ ";
-        if (student.status == "Passed") {
+        
+        // Determine status based on sort criteria
+        std::string displayStatus;
+        if (sortChoice == 1) {
+            // When sorting by subject, base status on subject grade
+            displayStatus = (student.grades[subjectIndex] < 4.0) ? "Passed" : "Failed";
+        } else {
+            // For GWA and Name sorting, use the stored status (based on GWA)
+            displayStatus = student.status;
+        }
+        
+        if (displayStatus == "Passed") {
             std::cout << COLOR_GREEN << std::left << std::setw(7) << "✓ PASS" << COLOR_RESET;
         } else {
             std::cout << COLOR_YELLOW << std::left << std::setw(7) << "✗ FAIL" << COLOR_RESET;
         }
         std::cout << "\n";
+        counter++;
     }
     std::cout << COLOR_CYAN << "═══════════════════════════════════════════════════════════════════════════════════════════════════════\n" << COLOR_RESET;
 }
@@ -1000,10 +991,10 @@ void displayMenu() {
               << "║ " << COLOR_BOLD << "6." << COLOR_RESET << COLOR_GREEN << " Demonstrate BST\n"
               << "║ " << COLOR_BOLD << "7." << COLOR_RESET << COLOR_GREEN << " Display Pass/Fail Status\n"
               << "║ " << COLOR_BOLD << "8." << COLOR_RESET << COLOR_GREEN << " Delete Student\n"
-              << "║ " << COLOR_BOLD << "9." << COLOR_RESET << COLOR_GREEN << " View Sorted Students (Subject/GWA/Name)\n" << COLOR_RESET;
-    std::cout << COLOR_YELLOW << "║ " << COLOR_BOLD << "0." << COLOR_RESET << COLOR_YELLOW << " Exit\n" << COLOR_RESET;
+              << "║ " << COLOR_BOLD << "9." << COLOR_RESET << COLOR_GREEN << " View Sorted Students (Subject / GWA / Name)\n" << COLOR_RESET;
+    std::cout << COLOR_YELLOW << "║ " << COLOR_BOLD << "10." << COLOR_RESET << COLOR_YELLOW << " Exit\n" << COLOR_RESET;
     std::cout << COLOR_CYAN << "║\n╚═══════════════════════════════════════════════════════════╝\n" << COLOR_RESET;
-    std::cout << COLOR_MAGENTA << COLOR_BOLD << "Enter your choice (0-9): " << COLOR_RESET;
+    std::cout << COLOR_MAGENTA << COLOR_BOLD << "Enter your choice (1-10): " << COLOR_RESET;
 }
 
 int main() {
@@ -1061,7 +1052,6 @@ int main() {
         studentsByYear[THIRD].push_back(createStudent("Timothy P. Villegas", "2023131990", "villegas.timothy@ue.edu.ph", THIRD, {3.00, 1.75, 1.25, 1.75, 1.5, 1.75, 1.25, 3.00, 1.00, 1.00}));
         studentsByYear[THIRD].push_back(createStudent("Pharrell Morgan Basalo", "2023113924", "basalo.pharrellmorgan@ue.edu.ph", THIRD, {1.5, 2.00, 1.00, 1.50, 1.75, 1.75, 1.00, 2.00, 1.00, 1.00}));
         studentsByYear[THIRD].push_back(createStudent("Marc Andrew Pitalo", "20231123083", "pitalo.marcandrew@ue.edu.ph", THIRD, {1.5, 1.25, 1.25, 1.75, 1.25, 1.5, 1.25, 1.00, 1.25, 1.5}));
-        studentsByYear[THIRD].push_back(createStudent("Hyryl Tibay", "2011135939", "tibay.hyryltibay@ue.edu.ph", THIRD, {1,3,5,9,3,9}));
         studentsByYear[THIRD].push_back(createStudent("Rein Klyde Gorospe", "20237144006", "gorospe.reinklyde@ue.edu.ph", THIRD, {2.00, 1.25, 2.00, 1.75, 1.25, 1.50, 1.00, 1.25, 1.25, 1.75}));
         studentsByYear[THIRD].push_back(createStudent("Aldrich Bonzon", "20211102453", "bonzon.aldrich@ue.edu.ph", THIRD, {1.25, 1.00, 1.25, 1.75, 1.00, 1.25, 1.00, 1.25, 1.25, 1.00}));
         studentsByYear[THIRD].push_back(createStudent("Renz Magrata", "20231119974", "magrata.renz@ue.edu.ph", THIRD, {1.50, 1.25, 1.00, 1.75, 1.00, 1.50, 1.25, 1.25, 1.00, 1.25}));
@@ -1121,7 +1111,7 @@ int main() {
 
     // Main interactive menu loop
     int choice = 0;
-    while (choice != 0) {
+    while (choice != 10) {
         displayMenu();
         std::cin >> choice;
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -1136,14 +1126,14 @@ int main() {
         case 7: displayPassFail(allStudents); break;
         case 8: deleteStudent(allStudents, studentsByYear); break;
         case 9: sortBySubjectGWAName(studentsByYear); break;
-        case 0:
+        case 10:
             std::cout << COLOR_MAGENTA << COLOR_BOLD << "\n╔════════════════════════════════════════════╗\n"
                       << "║  Thank you for using Student GWA System!  ║\n"
                       << "║              See you next time!           ║\n"
                       << "╚════════════════════════════════════════════╝\n" << COLOR_RESET;
             break;
         default:
-            std::cout << COLOR_YELLOW << "\n⚠  Invalid choice! Please enter 0-9.\n" << COLOR_RESET;
+            std::cout << COLOR_YELLOW << "\n⚠  Invalid choice! Please enter 1-10.\n" << COLOR_RESET;
         }
     }
 
